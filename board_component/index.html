@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Checkers Board Component</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: transparent;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #board-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 12px;
+            box-sizing: border-box;
+            width: 100%;
+        }
+
+        /* Chess.com-like flat slate board border */
+        #board {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            grid-template-rows: repeat(8, 1fr);
+            width: 90vw;
+            max-width: 480px;
+            height: 90vw;
+            max-height: 480px;
+            border: 6px solid #1b2226; /* Dark slate board boundary */
+            border-radius: 4px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+            background-color: #1b2226;
+            user-select: none;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* 180 degree rotation for Red's perspective */
+        #board.rotated {
+            transform: rotate(180deg);
+        }
+
+        .square {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-sizing: border-box;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Sandbox Theme Wood/Terracotta Board Palettes */
+        .square.light {
+            background-color: #dfcaaa; /* Sandy clay light */
+        }
+
+        .square.dark {
+            background-color: #a66e4e; /* Terracotta brown dark */
+        }
+
+        /* Playable Squares */
+        .square.dark.playable {
+            cursor: pointer;
+        }
+
+        /* Highlight states */
+        
+        /* Selected Piece Square (Chess.com Yellow Highlight) */
+        .square.selected-square {
+            background-color: rgba(247, 247, 105, 0.7) !important;
+        }
+
+        /* Allowed Move Indicators (Chess.com Translucent Dark Dot) */
+        .square.highlight-move::after {
+            content: '';
+            width: 22px;
+            height: 22px;
+            background-color: rgba(0, 0, 0, 0.16);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        /* Last Move Highlight (Chess.com Translucent Soft Yellow-Green) */
+        .square.highlight-last {
+            background-color: rgba(247, 247, 105, 0.4) !important;
+        }
+
+        /* Best Move Prediction (Vibrant blue highlight) */
+        .square.highlight-best {
+            background-color: rgba(37, 99, 235, 0.5) !important;
+        }
+
+        /* Checkers Pieces Styled Like Chess.com (Flat disks with inner ring) */
+        .piece {
+            width: 82%;
+            height: 82%;
+            border-radius: 50%;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.25);
+            z-index: 10;
+        }
+
+        .piece:hover {
+            transform: scale(1.06);
+        }
+
+        /* If board is rotated, pieces must be rotated 180deg back to remain upright */
+        #board.rotated .piece {
+            transform: rotate(180deg);
+        }
+        #board.rotated .piece:hover {
+            transform: rotate(180deg) scale(1.06);
+        }
+
+        /* Sleek 3D Dark Slate Pieces (representing Red) */
+        .piece.red {
+            background: radial-gradient(circle at 35% 35%, #4a5560, #2e373f);
+            border: 2px solid #232a30;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.4), inset 0 -3px 5px rgba(0,0,0,0.4), inset 0 3px 5px rgba(255,255,255,0.1);
+        }
+
+        /* Sleek 3D Cream Pieces (representing White) */
+        .piece.white {
+            background: radial-gradient(circle at 35% 35%, #fdf6e7, #ebdcb9);
+            border: 2px solid #cdb898;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.4), inset 0 -3px 5px rgba(0,0,0,0.25), inset 0 3px 5px rgba(255,255,255,0.8);
+        }
+
+        /* Flat concentric ring inside the disk to give checkers look */
+        .piece::after {
+            content: '';
+            position: absolute;
+            top: 20%;
+            left: 20%;
+            right: 20%;
+            bottom: 20%;
+            border: 2px solid rgba(0, 0, 0, 0.08);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .piece.red::after {
+            border-color: rgba(255, 255, 255, 0.08);
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.4), 0 1px 1px rgba(255,255,255,0.05);
+        }
+
+        .piece.white::after {
+            border-color: rgba(0, 0, 0, 0.08);
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.1), 0 1px 1px rgba(255,255,255,0.3);
+        }
+
+        /* King styling (adds crown emoji) */
+        .piece.king {
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3), 0 0 4px rgba(245, 158, 11, 0.4);
+        }
+
+        /* Render Crown Emoji inside King piece */
+        .piece.king::before {
+            content: '👑';
+            font-size: 20px;
+            color: #fbbf24;
+            filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.5));
+            z-index: 20;
+            border: none;
+            position: absolute;
+        }
+    </style>
+</head>
+<body>
+    <div id="board-container">
+        <div id="board"></div>
+    </div>
+
+    <script>
+        const board = document.getElementById('board');
+        let currentBoardState = null;
+        let selectedPiece = null;
+        let allowedDestinations = [];
+        let lastMove = [];
+        let bestMove = [];
+        let mode = 'play';
+        let sandboxTool = 'E';
+        let soundEffectsEnabled = true;
+        let isRotated = false;
+
+        // --- Animation & Interaction Block Lock ---
+        let isAnimating = false;
+
+        // --- Sound State Tracker ---
+        let prevBoard = null;
+        let prevWinner = null;
+
+        // --- Web Audio API Synth Effects ---
+        let audioCtx = null;
+        function getAudioContext() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            return audioCtx;
+        }
+
+        // 1. Selection Tick
+        function playClickSound() {
+            if (!soundEffectsEnabled) return;
+            const ctx = getAudioContext();
+            const now = ctx.currentTime;
+            
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(600, now);
+            osc.frequency.exponentialRampToValueAtTime(200, now + 0.03);
+            
+            gain.gain.setValueAtTime(0.03, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
+            
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.04);
+        }
+
+        // 2. Chess.com Woody Move Tock
+        function playMoveSound() {
+            if (!soundEffectsEnabled) return;
+            const ctx = getAudioContext();
+            const now = ctx.currentTime;
+            
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(360, now);
+            osc.frequency.exponentialRampToValueAtTime(100, now + 0.05);
+            
+            gain.gain.setValueAtTime(0.35, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+            
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.06);
+        }
+
+        // 3. Chess.com Capture Click + Rattle
+        function playCaptureSound() {
+            if (!soundEffectsEnabled) return;
+            const ctx = getAudioContext();
+            const now = ctx.currentTime;
+            
+            // Primary woody impact
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(450, now);
+            osc.frequency.exponentialRampToValueAtTime(80, now + 0.07);
+            gain.gain.setValueAtTime(0.28, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+            
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.08);
+            
+            // High rattle tick
+            const tick = ctx.createOscillator();
+            const tickGain = ctx.createGain();
+            tick.type = 'sine';
+            tick.frequency.setValueAtTime(900, now);
+            tickGain.gain.setValueAtTime(0.06, now);
+            tickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.02);
+            tick.connect(tickGain);
+            tickGain.connect(ctx.destination);
+            tick.start(now);
+            tick.stop(now + 0.02);
+        }
+
+        // 4. Chess.com Crowning / Double tap
+        function playCrowningSound() {
+            if (!soundEffectsEnabled) return;
+            const ctx = getAudioContext();
+            const now = ctx.currentTime;
+            
+            // Tap 1
+            const osc1 = ctx.createOscillator();
+            const gain1 = ctx.createGain();
+            osc1.type = 'sine';
+            osc1.frequency.setValueAtTime(440, now);
+            gain1.gain.setValueAtTime(0.25, now);
+            gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+            osc1.connect(gain1);
+            gain1.connect(ctx.destination);
+            osc1.start(now);
+            osc1.stop(now + 0.05);
+            
+            // Tap 2 (50ms delay)
+            const osc2 = ctx.createOscillator();
+            const gain2 = ctx.createGain();
+            osc2.type = 'sine';
+            osc2.frequency.setValueAtTime(440, now + 0.05);
+            gain2.gain.setValueAtTime(0.25, now + 0.05);
+            gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+            osc2.connect(gain2);
+            gain2.connect(ctx.destination);
+            osc2.start(now + 0.05);
+            osc2.stop(now + 0.1);
+        }
+
+        // 5. Chess.com Win / Chime
+        function playWinSound() {
+            if (!soundEffectsEnabled) return;
+            const ctx = getAudioContext();
+            const now = ctx.currentTime;
+            const notes = [329.63, 392.00, 523.25, 659.25]; // Ascending E4-G4-C5-E5
+            
+            notes.forEach((freq, index) => {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, now + index * 0.06);
+                gain.gain.setValueAtTime(0.12, now + index * 0.06);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + index * 0.06 + 0.22);
+                
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start(now + index * 0.06);
+                osc.stop(now + index * 0.06 + 0.25);
+            });
+        }
+
+        // 6. Chess.com Loss / Slide down
+        function playLossSound() {
+            if (!soundEffectsEnabled) return;
+            const ctx = getAudioContext();
+            const now = ctx.currentTime;
+            const notes = [311.13, 293.66, 261.63]; // Descending Eb4-D4-C4
+            
+            notes.forEach((freq, index) => {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, now + index * 0.12);
+                gain.gain.setValueAtTime(0.1, now + index * 0.12);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + index * 0.12 + 0.25);
+                
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start(now + index * 0.12);
+                osc.stop(now + index * 0.12 + 0.3);
+            });
+        }
+
+        // Count active pieces to detect captures
+        function countPieces(grid) {
+            let red = 0, white = 0;
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    const val = grid[r][c];
+                    if (val > 0) red++;
+                    else if (val < 0) white++;
+                }
+            }
+            return { red, white };
+        }
+
+        // Notify Streamlit that component is loaded
+        function notifyReady() {
+            window.parent.postMessage({
+                isStreamlitMessage: true,
+                type: "streamlit:componentReady",
+                apiVersion: 1
+            }, "*");
+        }
+
+        // Send click coordinates back to Python
+        function sendClick(r, c) {
+            if (isAnimating) return; // Block clicks during animations
+            
+            getAudioContext();
+            playClickSound();
+            
+            window.parent.postMessage({
+                isStreamlitMessage: true,
+                type: "streamlit:setComponentValue",
+                value: {
+                    r: r,
+                    c: c,
+                    timestamp: Date.now()
+                }
+            }, "*");
+        }
+
+        // Adjust the Streamlit parent iframe height dynamically
+        function updateHeight() {
+            const height = document.getElementById('board-container').offsetHeight;
+            window.parent.postMessage({
+                isStreamlitMessage: true,
+                type: "streamlit:setFrameHeight",
+                height: height
+            }, "*");
+        }
+
+        // Helper check to see if square is in coordinates list
+        const defInCoords = (r, c, coords) => {
+            if (!coords) return false;
+            return coords.some(coord => coord[0] === r && coord[1] === c);
+        };
+
+        // Render the board layout statically
+        function renderBoardState(grid) {
+            board.innerHTML = '';
+
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    const square = document.createElement('div');
+                    square.classList.add('square');
+
+                    const isDark = (r + c) % 2 === 1;
+                    square.classList.add(isDark ? 'dark' : 'light');
+
+                    if (isDark) {
+                        square.classList.add('playable');
+                        square.onclick = () => sendClick(r, c);
+
+                        // Highlight selected piece square
+                        if (selectedPiece && selectedPiece[0] === r && selectedPiece[1] === c) {
+                            square.classList.add('selected-square');
+                        }
+
+                        // Highlight valid moves
+                        if (defInCoords(r, c, allowedDestinations)) {
+                            square.classList.add('highlight-move');
+                        }
+
+                        // Highlight last move positions
+                        if (defInCoords(r, c, lastMove)) {
+                            square.classList.add('highlight-last');
+                        }
+
+                        // Highlight best move positions recommended by AI
+                        if (defInCoords(r, c, bestMove)) {
+                            square.classList.add('highlight-best');
+                        }
+
+                        // Add Piece if present
+                        const pieceValue = grid[r][c];
+                        if (pieceValue !== 0) {
+                            const piece = document.createElement('div');
+                            piece.classList.add('piece');
+                            
+                            if (pieceValue > 0) {
+                                piece.classList.add('red');
+                            } else {
+                                piece.classList.add('white');
+                            }
+
+                            if (Math.abs(pieceValue) === 2) {
+                                piece.classList.add('king');
+                            }
+
+                            square.appendChild(piece);
+                        }
+                    }
+
+                    board.appendChild(square);
+                }
+            }
+            updateHeight();
+        }
+
+        // Render the board
+        function render() {
+            renderBoardState(currentBoardState);
+        }
+
+        // --- Step-by-Step Path Animator ---
+        async function animateLastMove(path, winner) {
+            isAnimating = true;
+            
+            // 1. Render board in previous state
+            const tempBoard = JSON.parse(JSON.stringify(prevBoard));
+            renderBoardState(tempBoard);
+            
+            // Find start cell
+            const startR = path[0][0];
+            const startC = path[0][1];
+            const pieceVal = prevBoard[startR][startC];
+            
+            if (pieceVal === 0) {
+                renderBoardState(currentBoardState);
+                isAnimating = false;
+                prevBoard = JSON.parse(JSON.stringify(currentBoardState));
+                prevWinner = winner;
+                return;
+            }
+            
+            // Hide the moving piece from its starting square visually
+            const startCell = board.children[startR * 8 + startC];
+            const startPieceEl = startCell.querySelector('.piece');
+            if (startPieceEl) startPieceEl.style.opacity = '0';
+            
+            // Create absolute-positioned floating piece to slide (using percentage grid layout)
+            const floatingPiece = document.createElement('div');
+            floatingPiece.style.position = 'absolute';
+            floatingPiece.style.zIndex = '100';
+            floatingPiece.style.width = '12.5%';
+            floatingPiece.style.height = '12.5%';
+            floatingPiece.style.display = 'flex';
+            floatingPiece.style.alignItems = 'center';
+            floatingPiece.style.justifyContent = 'center';
+            floatingPiece.style.pointerEvents = 'none';
+            
+            // Create the visual piece inside the wrapper
+            const visualPiece = document.createElement('div');
+            visualPiece.classList.add('piece');
+            if (pieceVal > 0) visualPiece.classList.add('red');
+            else visualPiece.classList.add('white');
+            if (Math.abs(pieceVal) === 2) visualPiece.classList.add('king');
+            
+            floatingPiece.appendChild(visualPiece);
+            
+            // Set initial grid position
+            floatingPiece.style.left = `${startC * 12.5}%`;
+            floatingPiece.style.top = `${startR * 12.5}%`;
+            board.appendChild(floatingPiece);
+            
+            // Force browser layout reflow
+            floatingPiece.offsetHeight;
+            
+            // 2. Cycle through each coordinate step
+            for (let i = 1; i < path.length; i++) {
+                const prevStepR = path[i-1][0];
+                const prevStepC = path[i-1][1];
+                const nextStepR = path[i][0];
+                const nextStepC = path[i][1];
+                
+                const isJump = Math.abs(nextStepR - prevStepR) === 2;
+                
+                // Trigger CSS Slide translation using percentages
+                floatingPiece.style.transition = 'all 0.65s cubic-bezier(0.25, 1, 0.5, 1)';
+                floatingPiece.style.left = `${nextStepC * 12.5}%`;
+                floatingPiece.style.top = `${nextStepR * 12.5}%`;
+                
+                // Wait for animation frame to slide
+                await new Promise(resolve => setTimeout(resolve, 650));
+                
+                if (isJump) {
+                    const midR = (prevStepR + nextStepR) / 2;
+                    const midC = (prevStepC + nextStepC) / 2;
+                    
+                    tempBoard[midR][midC] = 0;
+                    
+                    const midCell = board.children[midR * 8 + midC];
+                    const midPieceEl = midCell.querySelector('.piece');
+                    if (midPieceEl) {
+                        midPieceEl.style.transition = 'all 0.35s ease';
+                        midPieceEl.style.transform = 'scale(0)';
+                        midPieceEl.style.opacity = '0';
+                    }
+                    
+                    playCaptureSound();
+                } else {
+                    playMoveSound();
+                }
+                
+                tempBoard[prevStepR][prevStepC] = 0;
+                tempBoard[nextStepR][nextStepC] = pieceVal;
+            }
+            
+            // 3. Remove float element & complete render
+            floatingPiece.remove();
+            isAnimating = false;
+            
+            // Check crowning chime conditions
+            const finalR = path[path.length - 1][0];
+            const finalC = path[path.length - 1][1];
+            const crownedThisMove = (Math.abs(prevBoard[startR][startC]) === 1 && Math.abs(currentBoardState[finalR][finalC]) === 2);
+            
+            if (crownedThisMove) {
+                playCrowningSound();
+            }
+            
+            renderBoardState(currentBoardState);
+            
+            // Trigger win/loss sound
+            if (winner && winner !== prevWinner && soundEffectsEnabled) {
+                if (winner === "Red") {
+                    playWinSound();
+                } else {
+                    playLossSound();
+                }
+            }
+            
+            prevBoard = JSON.parse(JSON.stringify(currentBoardState));
+            prevWinner = winner;
+            
+            // Notify Streamlit that the animation has completed
+            window.parent.postMessage({
+                isStreamlitMessage: true,
+                type: "streamlit:setComponentValue",
+                value: {
+                    animation_completed: true,
+                    timestamp: Date.now()
+                }
+            }, "*");
+        }
+
+        // Listen for props updates from Streamlit parent
+        window.addEventListener("message", (event) => {
+            if (event.data.type === "streamlit:render") {
+                const args = event.data.args;
+                const newBoard = args.board;
+                const newLastMove = args.last_move || [];
+                soundEffectsEnabled = (args.sound_effects !== undefined) ? args.sound_effects : true;
+                
+                // Set rotation perspective
+                isRotated = args.rotated || false;
+                if (isRotated) {
+                    board.classList.add('rotated');
+                } else {
+                    board.classList.remove('rotated');
+                }
+                
+                // Check if lastMove is a new path to animate
+                let isNewMove = false;
+                if (newLastMove.length >= 2) {
+                    if (!lastMove || lastMove.length !== newLastMove.length) {
+                        isNewMove = true;
+                    } else {
+                        for (let i = 0; i < newLastMove.length; i++) {
+                            if (lastMove[i][0] !== newLastMove[i][0] || lastMove[i][1] !== newLastMove[i][1]) {
+                                isNewMove = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+                
+                selectedPiece = args.selected_piece;
+                allowedDestinations = args.allowed_destinations || [];
+                lastMove = newLastMove;
+                bestMove = args.best_move || [];
+                mode = args.mode || 'play';
+                sandboxTool = args.sandbox_tool || 'E';
+                const winner = args.winner;
+                
+                if (prevBoard && isNewMove && !isAnimating) {
+                    currentBoardState = newBoard;
+                    animateLastMove(newLastMove, winner);
+                } else {
+                    currentBoardState = newBoard;
+                    render();
+                    
+                    if (winner && winner !== prevWinner && soundEffectsEnabled) {
+                        if (winner === "Red") {
+                            playWinSound();
+                        } else {
+                            playLossSound();
+                        }
+                    }
+                    
+                    if (!isAnimating) {
+                        prevBoard = JSON.parse(JSON.stringify(currentBoardState));
+                        prevWinner = winner;
+                    }
+                }
+            }
+        });
+
+        // Initialize component
+        notifyReady();
+    </script>
+</body>
+</html>
